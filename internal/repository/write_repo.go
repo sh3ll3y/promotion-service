@@ -2,8 +2,7 @@ package repository
 
 import (
 	"database/sql"
-	_ "github.com/lib/pq"
-	"github.com/sh3ll3y/promotion-service/internal/metrics"
+	"fmt"
 	"github.com/sh3ll3y/promotion-service/internal/models"
 )
 
@@ -11,60 +10,48 @@ type WriteRepository struct {
 	db *sql.DB
 }
 
-func NewWriteRepository(db *sql.DB) (*WriteRepository, error) {
-	return &WriteRepository{db: db}, nil
+func NewWriteRepository(db *sql.DB) *WriteRepository {
+	return &WriteRepository{db: db}
 }
 
-func (r *WriteRepository) BeginTx() (*sql.Tx, error) {
-	return r.db.Begin()
+func (r *WriteRepository) ClearAllPromotions() error {
+	_, err := r.db.Exec("DELETE FROM promotions")
+	return err
 }
 
-func (r *WriteRepository) CreatePromotionTx(tx *sql.Tx, p *models.Promotion) error {
-	_, err := tx.Exec("INSERT INTO promotions (id, price, expiration_date) VALUES ($1, $2, $3)",
-		p.ID, p.Price, p.ExpirationDate)
-	if err != nil {
-		return err
-	}
-	metrics.DatabaseOperations.WithLabelValues("create").Inc()
-	return nil
-}
-
-// Keep the non-transactional method for compatibility
 func (r *WriteRepository) CreatePromotion(p *models.Promotion) error {
-	_, err := r.db.Exec("INSERT INTO promotions (id, price, expiration_date) VALUES ($1, $2, $3)",
-		p.ID, p.Price, p.ExpirationDate)
+	_, err := r.db.Exec(
+		"INSERT INTO promotions (id, price, expiration_date) VALUES ($1, $2, $3)",
+		p.ID, p.Price, p.ExpirationDate,
+	)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to insert promotion: %w", err)
 	}
-	metrics.DatabaseOperations.WithLabelValues("create").Inc()
 	return nil
 }
 
-func (r *WriteRepository) BulkCreatePromotions(promotions []*models.Promotion) error {
-	tx, err := r.db.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
+func (r *WriteRepository) GetTotalPromotionsCount() (int, error) {
+	var count int
+	err := r.db.QueryRow("SELECT COUNT(*) FROM promotions").Scan(&count)
+	return count, err
+}
 
-	stmt, err := tx.Prepare("INSERT INTO promotions (id, price, expiration_date) VALUES ($1, $2, $3)")
+func (r *WriteRepository) GetPromotionsBatch(offset, limit int) ([]*models.Promotion, error) {
+	rows, err := r.db.Query("SELECT id, price, expiration_date FROM promotions LIMIT $1 OFFSET $2", limit, offset)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	defer stmt.Close()
+	defer rows.Close()
 
-	for _, p := range promotions {
-		_, err = stmt.Exec(p.ID, p.Price, p.ExpirationDate)
+	var promotions []*models.Promotion
+	for rows.Next() {
+		p := &models.Promotion{}
+		err := rows.Scan(&p.ID, &p.Price, &p.ExpirationDate)
 		if err != nil {
-			return err
+			return nil, err
 		}
+		promotions = append(promotions, p)
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		return err
-	}
-
-	metrics.DatabaseOperations.WithLabelValues("bulk_create").Add(float64(len(promotions)))
-	return nil
+	return promotions, rows.Err()
 }

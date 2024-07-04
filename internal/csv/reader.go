@@ -1,7 +1,6 @@
 package csv
 
 import (
-	"bufio"
 	"encoding/csv"
 	"fmt"
 	"io"
@@ -11,107 +10,102 @@ import (
 	"time"
 
 	"github.com/sh3ll3y/promotion-service/internal/logging"
-	"github.com/sh3ll3y/promotion-service/internal/metrics"
 	"github.com/sh3ll3y/promotion-service/internal/models"
+	"github.com/sh3ll3y/promotion-service/internal/types"
 	"go.uber.org/zap"
 )
 
 type PromotionProcessor func(*models.Promotion) error
 
-func ProcessPromotionsFromCSV(filename string, processor PromotionProcessor, numWorkers int) error {
+func ProcessPromotionsFromCSV(filename string, processor PromotionProcessor, workerCount int, eventPublisher types.EventPublisher) error {
 	file, err := os.Open(filename)
 	if err != nil {
 		return fmt.Errorf("failed to open file: %w", err)
 	}
-	defer func() {
-		if closeErr := file.Close(); closeErr != nil {
-			logging.Logger.Error("Failed to close file", zap.Error(closeErr))
-		}
-	}()
+	defer file.Close()
 
-	reader := csv.NewReader(bufio.NewReader(file))
+	reader := csv.NewReader(file)
 
 	var wg sync.WaitGroup
-	recordChan := make(chan []string)
-	errChan := make(chan error, numWorkers)
+	jobs := make(chan []string)
+	errors := make(chan error, workerCount)
 
-	// Start worker goroutines
-	for i := 0; i < numWorkers; i++ {
+	for i := 0; i < workerCount; i++ {
 		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for record := range recordChan {
-				promotion, err := parsePromotion(record)
-				if err != nil {
-					errChan <- fmt.Errorf("error parsing promotion: %w", err)
-					return
-				}
-
-				err = processor(promotion)
-				if err != nil {
-					errChan <- fmt.Errorf("error processing promotion: %w", err)
-					return
-				}
-
-				metrics.CsvProcessedLines.Inc()
-			}
-		}()
+		go worker(&wg, jobs, errors, processor)
 	}
 
-	// Read CSV and send records to workers
 	go func() {
-		defer close(recordChan)
 		for {
 			record, err := reader.Read()
 			if err == io.EOF {
 				break
 			}
 			if err != nil {
-				errChan <- fmt.Errorf("error reading CSV record: %w", err)
+				errors <- fmt.Errorf("error reading CSV: %w", err)
 				return
 			}
-			recordChan <- record
+			jobs <- record
 		}
+		close(jobs)
 	}()
 
-	// Wait for all workers to finish
-	wg.Wait()
-	close(errChan)
+	go func() {
+		wg.Wait()
+		close(errors)
+	}()
 
-	// Check for any errors
-	for err := range errChan {
+	for err := range errors {
 		if err != nil {
 			return err
 		}
 	}
 
+	// Publish event after successful processing
+	err = eventPublisher.PublishNewFileLoadedEvent()
+	if err != nil {
+		logging.Logger.Error("Failed to publish new file loaded event", zap.Error(err))
+		return fmt.Errorf("failed to publish new file loaded event: %w", err)
+	}
+
 	return nil
+}
+
+func worker(wg *sync.WaitGroup, jobs <-chan []string, errors chan<- error, processor PromotionProcessor) {
+	defer wg.Done()
+	for record := range jobs {
+		promotion, err := parsePromotion(record)
+		if err != nil {
+			errors <- err
+			return
+		}
+		err = processor(promotion)
+		if err != nil {
+			errors <- err
+			return
+		}
+	}
 }
 
 func parsePromotion(record []string) (*models.Promotion, error) {
 	if len(record) != 3 {
-		return nil, fmt.Errorf("invalid record format")
+		return nil, fmt.Errorf("invalid record length: got %d, want 3", len(record))
 	}
 
 	price, err := strconv.ParseFloat(record[1], 64)
 	if err != nil {
-		return nil, fmt.Errorf("invalid price format: %w", err)
+		return nil, fmt.Errorf("invalid price: %w", err)
 	}
 
+	// Parse the date using the format from your CSV file
 	expirationDate, err := time.Parse("2006-01-02 15:04:05 -0700 MST", record[2])
 	if err != nil {
-		return nil, fmt.Errorf("invalid date format: %w", err)
+		return nil, fmt.Errorf("invalid expiration date: %w", err)
 	}
 
-	promotion := &models.Promotion{
+	return &models.Promotion{
 		ID:             record[0],
 		Price:          price,
 		ExpirationDate: expirationDate,
-	}
-
-	if err := promotion.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid promotion data: %w", err)
-	}
-
-	return promotion, nil
+	}, nil
 }

@@ -3,13 +3,14 @@ package main
 import (
 	"context"
 	"database/sql"
-	"github.com/go-redis/redis/v8"
+	"github.com/sh3ll3y/promotion-service/internal/types"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -53,10 +54,7 @@ func main() {
 		logging.Logger.Fatal("Failed to run migrations on read database", zap.Error(err))
 	}
 
-	writeRepo, err := repository.NewWriteRepository(writeDB)
-	if err != nil {
-		logging.Logger.Fatal("Failed to create write repository", zap.Error(err))
-	}
+	writeRepo := repository.NewWriteRepository(writeDB)
 
 	redisOpts, err := redis.ParseURL(cfg.RedisURL)
 	if err != nil {
@@ -72,21 +70,25 @@ func main() {
 		logging.Logger.Fatal("Failed to connect to Redis", zap.Error(err))
 	}
 
-
 	readRepo := repository.NewReadRepository(readDB, cacheClient)
-	if err != nil {
-		logging.Logger.Fatal("Failed to create read repository", zap.Error(err))
-	}
 
-
-	kafkaProducer, err := kafka.NewProducer(cfg.KafkaBrokers)
+	kafkaProducer, err := kafka.NewProducer(cfg.KafkaBrokers, cfg.KafkaTopic)
 	if err != nil {
 		logging.Logger.Fatal("Failed to create Kafka producer", zap.Error(err))
 	}
+	var eventPublisher types.EventPublisher = kafkaProducer
+	promotionService := service.NewPromotionService(writeRepo, readRepo, eventPublisher)
 
-	promotionService := service.NewPromotionService(writeRepo, readRepo, cacheClient, kafkaProducer)
+	kafkaConsumer, err := kafka.NewConsumer(cfg.KafkaBrokers, cfg.KafkaTopic, promotionService)
+	if err != nil {
+		logging.Logger.Fatal("Failed to create Kafka consumer", zap.Error(err))
+	}
 
-	go kafka.StartConsumer(cfg.KafkaBrokers, cfg.KafkaTopic, readRepo)
+	go func() {
+		if err := kafkaConsumer.Start(); err != nil {
+			logging.Logger.Error("Kafka consumer error", zap.Error(err))
+		}
+	}()
 
 	router := mux.NewRouter()
 	api.RegisterHandlers(router, promotionService)
@@ -116,7 +118,6 @@ func main() {
 	}
 
 	logging.Logger.Info("Server exiting")
-
 }
 
 func connectWithRetry(dbURL string) (*sql.DB, error) {

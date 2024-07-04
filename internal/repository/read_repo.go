@@ -10,6 +10,7 @@ import (
 	"github.com/sh3ll3y/promotion-service/internal/metrics"
 	"github.com/sh3ll3y/promotion-service/internal/models"
 	"go.uber.org/zap"
+	"strings"
 	"time"
 )
 
@@ -21,6 +22,59 @@ type ReadRepository struct {
 func NewReadRepository(db *sql.DB, cache *redis.Client) *ReadRepository {
 	return &ReadRepository{db: db, cache: cache}
 }
+
+func (r *ReadRepository) ClearTempTable() error {
+	_, err := r.db.Exec("DELETE FROM promotions_temp")
+	return err
+}
+
+func (r *ReadRepository) BulkInsertPromotions(promotions []*models.Promotion) error {
+	if len(promotions) == 0 {
+		return nil
+	}
+
+	// Start a transaction
+	tx, err := r.db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Prepare the bulk insert query
+	valueStrings := make([]string, 0, len(promotions))
+	valueArgs := make([]interface{}, 0, len(promotions)*3)
+	for i, p := range promotions {
+		valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d)", i*3+1, i*3+2, i*3+3))
+		valueArgs = append(valueArgs, p.ID, p.Price, p.ExpirationDate)
+	}
+
+	stmt := fmt.Sprintf("INSERT INTO promotions_temp (id, price, expiration_date) VALUES %s",
+		strings.Join(valueStrings, ","))
+
+	// Execute the bulk insert
+	_, err = tx.Exec(stmt, valueArgs...)
+	if err != nil {
+		return fmt.Errorf("failed to insert promotions: %w", err)
+	}
+
+	// Commit the transaction
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
+}
+
+func (r *ReadRepository) SwapTables() error {
+	_, err := r.db.Exec(`
+        ALTER TABLE promotions RENAME TO promotions_old;
+        ALTER TABLE promotions_temp RENAME TO promotions;
+        ALTER TABLE promotions_old RENAME TO promotions_temp;
+        TRUNCATE TABLE promotions_temp;
+    `)
+	return err
+}
+
 
 func (r *ReadRepository) GetPromotion(id string) (*models.Promotion, error) {
 	ctx := context.Background()
@@ -68,16 +122,4 @@ func (r *ReadRepository) GetPromotion(id string) (*models.Promotion, error) {
 	return &promotion, nil
 }
 
-func (r *ReadRepository) UpsertPromotion(p *models.Promotion) error {
-	_, err := r.db.Exec(`
-        INSERT INTO promotions (id, price, expiration_date)
-        VALUES ($1, $2, $3)
-        ON CONFLICT (id) DO UPDATE SET
-            price = EXCLUDED.price,
-            expiration_date = EXCLUDED.expiration_date
-    `, p.ID, p.Price, p.ExpirationDate)
 
-	metrics.DatabaseOperations.WithLabelValues("upsert").Inc()
-
-	return err
-}
