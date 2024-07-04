@@ -81,3 +81,12 @@
 {"level":"info","ts":"2024-07-04T13:22:40.643Z","caller":"service/promotion_service.go:103","msg":"Read DB update completed successfully"}
 {"level":"info","ts":"2024-07-04T14:21:07.203Z","caller":"server/main.go:112","msg":"Shutting down server..."}
 {"level":"info","ts":"2024-07-04T14:21:07.212Z","caller":"server/main.go:120","msg":"Server exiting"}
+{"level":"info","ts":"2024-07-04T14:23:57.856Z","caller":"database/migrate.go:34","msg":"Migrations completed successfully"}
+{"level":"info","ts":"2024-07-04T14:23:57.867Z","caller":"database/migrate.go:34","msg":"Migrations completed successfully"}
+{"level":"info","ts":"2024-07-04T14:23:57.884Z","caller":"server/main.go:103","msg":"Starting server","address":":8080"}
+{"level":"info","ts":"2024-07-04T14:25:53.537Z","caller":"service/promotion_service.go:29","msg":"Starting CSV processing","filename":"/app/data/promotions.csv"}
+{"level":"info","ts":"2024-07-04T14:26:28.405Z","caller":"service/promotion_service.go:43","msg":"CSV processing completed successfully"}
+{"level":"info","ts":"2024-07-04T14:26:28.422Z","caller":"service/promotion_service.go:48","msg":"Starting read DB update"}
+{"level":"info","ts":"2024-07-04T14:26:30.404Z","caller":"service/promotion_service.go:97","msg":"Read DB update completed successfully"}
+{"level":"info","ts":"2024-07-04T14:29:32.421Z","caller":"server/main.go:112","msg":"Shutting down server..."}
+{"level":"info","ts":"2024-07-04T14:29:32.425Z","caller":"server/main.go:120","msg":"Server exiting"}

@@ -41,6 +41,7 @@ List any prerequisites here, for example:
 
 The application users CQRS pattern and implements an efficient, parallel processing mechanism for CSV files. Once the file is uploaded, we trigger an event to notify the system to update the read database. The consumer calls the promotion service again but in prod this can be a separate service that handles only the read part of the application. 
 
+It also considers the file as immutable and deletes the old records before uploading data from new file in both write and read databases but also ensures the data is available all the time for read operations.
 1. **File Streaming**: The CSV file is read line-by-line using a `csv.Reader`, minimizing memory usage.
 
 2. **Worker Pool**: A configurable pool of worker goroutines is created to process records concurrently.
@@ -67,7 +68,7 @@ The application users CQRS pattern and implements an efficient, parallel process
 
 This approach ensures efficient CPU utilization and memory management, enabling the processing of large CSV files without loading the entire file into memory. It also provides robustness through comprehensive error handling and system notification via event publishing.
 #### Example
-The CSV file should be placed in the root directory of the codebase:
+The CSV file should be placed in the root directory of the codebase (sample file already placed in the code):
 ```bash
 curl -X POST -d "filename=/app/data/promotions.csv" http://localhost:8080/process-csv
 ```
