@@ -1,0 +1,7 @@
+write_db_url: "postgres://user:password@write-db/promotions_write?sslmode=disable"
+read_db_url: "postgres://user:password@read-db/promotions_read?sslmode=disable"
+redis_url: "redis://redis:6379"
+kafka_brokers:
+  - "kafka:9092"
+kafka_topic: "promotions"
+environment: "development"

@@ -1,0 +1,26 @@
+{"level":"error","ts":"2024-07-03T09:15:27.269Z","caller":"database/migrate.go:17","msg":"Failed to run migrations","error":"dial tcp 172.19.0.4:5432: connect: connection refused","stacktrace":"github.com/sh3ll3y/promotion-service/internal/database.RunMigrations\n\t/app/internal/database/migrate.go:17\nmain.main\n\t/app/cmd/server/main.go:48\nruntime.main\n\t/usr/local/go/src/runtime/proc.go:250"}
+{"level":"fatal","ts":"2024-07-03T09:15:27.328Z","caller":"server/main.go:49","msg":"Failed to run migrations on write database","error":"dial tcp 172.19.0.4:5432: connect: connection refused","stacktrace":"main.main\n\t/app/cmd/server/main.go:49\nruntime.main\n\t/usr/local/go/src/runtime/proc.go:250"}
+{"level":"info","ts":"2024-07-03T09:47:53.338Z","caller":"database/migrate.go:34","msg":"Migrations completed successfully"}
+{"level":"info","ts":"2024-07-03T09:47:53.367Z","caller":"database/migrate.go:34","msg":"Migrations completed successfully"}
+{"level":"info","ts":"2024-07-03T09:47:53.410Z","caller":"server/main.go:89","msg":"Starting server","address":":8080"}
+{"level":"info","ts":"2024-07-03T09:47:53.719Z","caller":"kafka/consumer.go:26","msg":"Kafka consumer started","brokers":["kafka:9092"],"topic":"promotions"}
+{"level":"info","ts":"2024-07-03T09:48:26.615Z","caller":"server/main.go:98","msg":"Shutting down server..."}
+{"level":"info","ts":"2024-07-03T09:48:26.620Z","caller":"server/main.go:106","msg":"Server exiting"}
+{"level":"info","ts":"2024-07-03T10:00:13.262Z","caller":"database/migrate.go:34","msg":"Migrations completed successfully"}
+{"level":"info","ts":"2024-07-03T10:00:13.272Z","caller":"database/migrate.go:34","msg":"Migrations completed successfully"}
+{"level":"info","ts":"2024-07-03T10:00:13.302Z","caller":"server/main.go:89","msg":"Starting server","address":":8080"}
+{"level":"info","ts":"2024-07-03T10:00:13.596Z","caller":"kafka/consumer.go:26","msg":"Kafka consumer started","brokers":["kafka:9092"],"topic":"promotions"}
+{"level":"error","ts":"2024-07-03T10:04:03.738Z","caller":"api/handlers.go:44","msg":"Failed to process CSV file","error":"error parsing promotion: invalid promotion data: Key: 'Promotion.ExpirationDate' Error:Field validation for 'ExpirationDate' failed on the 'gt' tag","filename":"/app/data/promotions.csv","stacktrace":"github.com/sh3ll3y/promotion-service/internal/api.processCSVHandler.func1\n\t/app/internal/api/handlers.go:44\nnet/http.HandlerFunc.ServeHTTP\n\t/usr/local/go/src/net/http/server.go:2122\ngithub.com/gorilla/mux.(*Router).ServeHTTP\n\t/go/pkg/mod/github.com/gorilla/mux@v1.8.1/mux.go:212\nnet/http.serverHandler.ServeHTTP\n\t/usr/local/go/src/net/http/server.go:2936\nnet/http.(*conn).serve\n\t/usr/local/go/src/net/http/server.go:1995"}
+{"level":"info","ts":"2024-07-03T10:11:35.710Z","caller":"server/main.go:98","msg":"Shutting down server..."}
+{"level":"info","ts":"2024-07-03T10:11:35.717Z","caller":"server/main.go:106","msg":"Server exiting"}
+{"level":"info","ts":"2024-07-03T11:57:18.901Z","caller":"database/migrate.go:34","msg":"Migrations completed successfully"}
+{"level":"info","ts":"2024-07-03T11:57:18.911Z","caller":"database/migrate.go:34","msg":"Migrations completed successfully"}
+{"level":"info","ts":"2024-07-03T11:57:18.927Z","caller":"server/main.go:89","msg":"Starting server","address":":8080"}
+{"level":"info","ts":"2024-07-03T11:57:19.224Z","caller":"kafka/consumer.go:26","msg":"Kafka consumer started","brokers":["kafka:9092"],"topic":"promotions"}
+{"level":"info","ts":"2024-07-03T13:32:43.423Z","caller":"server/main.go:98","msg":"Shutting down server..."}
+{"level":"info","ts":"2024-07-03T13:32:43.430Z","caller":"server/main.go:106","msg":"Server exiting"}
+{"level":"info","ts":"2024-07-03T13:34:22.972Z","caller":"database/migrate.go:34","msg":"Migrations completed successfully"}
+{"level":"info","ts":"2024-07-03T13:34:22.983Z","caller":"database/migrate.go:34","msg":"Migrations completed successfully"}
+{"level":"info","ts":"2024-07-03T13:34:23.000Z","caller":"server/main.go:101","msg":"Starting server","address":":8080"}
+{"level":"info","ts":"2024-07-03T13:34:23.286Z","caller":"kafka/consumer.go:26","msg":"Kafka consumer started","brokers":["kafka:9092"],"topic":"promotions"}
+{"level":"error","ts":"2024-07-03T15:29:28.433Z","caller":"api/handlers.go:24","msg":"Failed to get promotion","error":"promotion not found","id":"000844e0-d066-4d90-af2d-2df574336343","stacktrace":"github.com/sh3ll3y/promotion-service/internal/api.getPromotionHandler.func1\n\t/app/internal/api/handlers.go:24\nnet/http.HandlerFunc.ServeHTTP\n\t/usr/local/go/src/net/http/server.go:2122\ngithub.com/gorilla/mux.(*Router).ServeHTTP\n\t/go/pkg/mod/github.com/gorilla/mux@v1.8.1/mux.go:212\nnet/http.serverHandler.ServeHTTP\n\t/usr/local/go/src/net/http/server.go:2936\nnet/http.(*conn).serve\n\t/usr/local/go/src/net/http/server.go:1995"}
